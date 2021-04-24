@@ -1,0 +1,16 @@
+dirc
+    dir
+    fichier2
+fichier1
+link
+
+
+
+
+
+dirc-> next = fichier1
+    dirc->child = dir
+        dir->child = NULL
+    dir -> next = fichier2
+fichier1 -> next = link
+link -> next = NULL
