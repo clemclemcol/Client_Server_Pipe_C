@@ -1,14 +1,6 @@
 % IN405 TD8 -- Systèmes d'exploitation
 % Dictionnaire Pascal
 
-# Modalités de soumission
-Ce TD est à faire en monôme, et à rendre au plus tard le 25 avril 2021,
-23:59 (France métropolitaine) sur moodle, dans l'espace dédié. Il est à
-rendre dans une archive .tar, contenant les fichiers source à rendre, le
-matériel de compilation et un fichier 'README.md' dans lequel vous mettrez
-votre nom, prénom et numéro d'étudiant. Plus d'informations dans la section
-"Rendu et notation du TD noté".
-
 # Contenu de l'archive
 Cette archive est constituée des fichiers suivants :
 
