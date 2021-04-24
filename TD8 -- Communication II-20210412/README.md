@@ -67,8 +67,3 @@ s'ajouter à la note.
 Tout comme pour le premier TD noté, une passe de similitude sera effectuée
 entre chaque rendu, et la note sera impactée si le coefficient de similitude
 est trop important.
-
-# Remontée de bugs
-N'hésitez pas à remonter tout problème d'implémentation majeur (soupçon
-d'erreur dans un prototype, erreur dans la documentation, matériel de
-compilation bugué, etc.) à l'adresse pro.seb.gougeaud@gmail.com
