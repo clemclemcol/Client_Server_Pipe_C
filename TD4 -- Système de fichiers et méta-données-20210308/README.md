@@ -1,15 +1,5 @@
 
 
-#   COLNOT Clémence 21801866
-
-
-#   Modalités de soumission
-Ce TD est à faire en monôme, et à rendre au plus tard le 21 mars 2021,
-23:59 (France métropolitaine) sur moodle, dans l'espace dédié. Il est à
-rendre dans une archive .tar, contenant les fichiers sources et d'en-tête,
-le matériel de compilation nécessaire et un fichier README.md dans lequel
-vous mettrez votre nom, prénom et numéro d'étudiant.
-
 # Contenu de l'archive
 Cette archive est constituée des fichiers suivants :
 
@@ -35,10 +25,4 @@ Le code fourni est censé être immuable :
 - vous pouvez rajouter n'importe quel nombre de fonctions dans les fichiers
   main.c, api.c et internals.c, et même d'autres fichiers -- vous n'êtes pas
   bloqués aux seuls prototypes fournis dans cette archive ;
-- vous pouvez modifier le Makefile fourni.
-
-# Remontée de bugs
-N'hésitez pas à remonter tout problème d'implémentation majeur (soupçon
-d'erreur dans un prototype, erreur dans la documentation, matériel de
-compilation bugué, etc.) à l'adresse pro.seb.gougeaud@gmail.com
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+- vous pouvez modifier le Makefile fourni.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
