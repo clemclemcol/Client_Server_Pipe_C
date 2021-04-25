@@ -18,8 +18,7 @@ struct dictionary_item
 {
     char name[DICT_NAME_MAX];
     double value;
-    //struct dictionary_item *suiv;
-    //int max_size;
+    
 };
 
 /* operators of a dictionary */
@@ -44,12 +43,12 @@ int create_dict(const char *size_string, struct dictionary_item **dict, size_t *
 {
     *dict_max_size = atoi(size_string);
     *dict = calloc((*dict_max_size), sizeof(struct dictionary_item *));
-    if (dict != NULL)
+    if (dict == NULL)
     {
-        return 0;
+        fprintf(stderr,"PBM Malloc.\n");
+        return 1;
     }
-    printf("PBM Malloc.\n");
-    return 1;
+    return 0;
 }
 
 void affiche_dict(struct dictionary_item *dict, size_t dict_max_size){
@@ -62,7 +61,6 @@ void affiche_dict(struct dictionary_item *dict, size_t dict_max_size){
 void destroy_dict(struct dictionary_item *dict)
 {
     free(dict);
-    printf("Dictionary destroyed.\n");
 }
 
 /* destroy the pipe files used by the server */
@@ -75,7 +73,7 @@ void destroy_pipes(const char *dict_name)
     
     unlink(in);
     unlink(out);
-    printf("Pipes destroyed.\n");
+
 }
 
 /* create the pipe files used by the server */
@@ -83,7 +81,7 @@ int create_pipes(const char *dict_name)
 {
     if (sizeof(dict_name) > DICT_NAME_MAX)
     {
-        printf("Name too long.\n");
+        fprintf(stderr,"Name too long.\n");
         return 1;
     }
 
@@ -97,10 +95,10 @@ int create_pipes(const char *dict_name)
     name_serv_pipe[1] = out;
     errno = 0;
     for (int i = 0; i < 2; i ++){
-        if (mkfifo(name_serv_pipe[i], 0644) < 0 && errno == 17)
+        if (mkfifo(name_serv_pipe[i], 0666) < 0 && errno == 17)
         {
             unlink(name_serv_pipe[i]);
-            if (mkfifo(name_serv_pipe[i], 0644)<0){
+            if (mkfifo(name_serv_pipe[i], 0666)<0){
                 fprintf(stderr, "error opening write end of pipe %s\n", name_serv_pipe[i]);
                 exit(1);
             }
@@ -117,25 +115,23 @@ int open_pipe(const char *dict_name, bool dict_input)
 {
     char *name_serv_pipe = malloc(sizeof(dict_name));
     sprintf(name_serv_pipe, "/tmp/dict_%s_%s", dict_name, dict_input ? "in" : "out");
-    int fd;
     errno = 0;
-    fd = open(name_serv_pipe, dict_input ? (O_RDONLY) : (O_WRONLY|O_NONBLOCK));             
+    int fd = open(name_serv_pipe, dict_input ? (O_RDONLY) : (O_WRONLY|O_NONBLOCK));            
     if (fd < 0)
     {
-        printf("errno open pipe : %d\n", errno);
-        fprintf(stderr, "Error opening server read end of pipe : %s\n", dict_name);
+        free(name_serv_pipe);
         return 1;
     }
-    printf("Opened in server correctly %s.\n", name_serv_pipe);
+    printf("Opened %s in server.\n", name_serv_pipe);
+    free(name_serv_pipe);
+
     return 0;
 }
 
 /* close a pipe */
 void close_pipe(int fd)
 {
-    if (close(fd)){
-        printf("Closed in server correctly.\n");
-    }
+    close(fd);
 }
 
 /* receive a command from the input pipe */
@@ -143,23 +139,26 @@ int receive_command(int fd, struct command *cmd, const char *dict_name)
 {
     int op ;
     close_pipe(fd);
-    //close_pipe(op);
-    //printf("dict name now: %s\n",dict_name);
+    close_pipe(op);
+    
     char *name_serv_pipe = malloc(sizeof(dict_name));
-    if (strcmp(name_serv_pipe, dict_name) != 0){
+    if ((strcmp(name_serv_pipe, dict_name) != 0) && fd == 0){
         sprintf(name_serv_pipe, "/tmp/dict_%s_in", dict_name);
-    }else {
+    }
+    else if ((strcmp(name_serv_pipe, dict_name) != 0) && fd == 1){
+        sprintf(name_serv_pipe, "/tmp/dict_%s_out", dict_name);
+    }
+    else {
         strcpy(name_serv_pipe, dict_name);
     }
 
     char full_cmd [BUFF_SIZE];
     errno = 0;
-    op = open(name_serv_pipe, O_RDONLY);
+    op = open(name_serv_pipe, O_RDONLY|O_NONBLOCK);
     if (op == 0){
         errno = 0;
         if(read(op, full_cmd, sizeof(full_cmd))){
-            printf("Reading command...\n");
-           
+            
             char *orders[3] = {0};
             char *strTok = strtok(full_cmd, " ");
             int i = 0;
@@ -169,15 +168,6 @@ int receive_command(int fd, struct command *cmd, const char *dict_name)
                 strTok = strtok(NULL, " ");       
             }
            
-            printf("full order : op = %s // name = %s // value = %s\n", orders[0], orders[1], orders[2]); 
-            if (orders[1] == NULL && orders[2]== NULL){
-                if (strcmp(orders[1], "Err")!=0){
-                    printf("The value searched is %s\n", orders[0]);
-                }else {
-                    printf("The value is not in %s", name_serv_pipe);
-                }
-                return 0;       
-            }
             cmd->op = (int)strtod(orders[0], NULL); 
            
             if (cmd->op == OP_EXIT){
@@ -194,24 +184,23 @@ int receive_command(int fd, struct command *cmd, const char *dict_name)
             }else {
                 cmd->value = 0;
             }
-            printf("Command received.\n");
 
             free(name_serv_pipe);
             free(strTok);
         }
         else{
-            printf ("read errno: %d\n", errno);
+            fprintf (stderr,"read errno: %d\n", errno);
             free(name_serv_pipe);
             return 1;
         }   
     }
     else {
-        printf ("open errno: %d\n", errno);
-        printf("Error opening server read side of %s.\n",name_serv_pipe);
+        fprintf (stderr,"open errno: %d\n", errno);
+        fprintf(stderr,"Error opening server read side of %s.\n",name_serv_pipe);
         free(name_serv_pipe);
+        
         return 1;
     }
-    printf("full cmd : op = %d // name = %s // value = %f\n", cmd->op, cmd->name, cmd->value); 
     close_pipe(fd);
     return 0;
 
@@ -220,36 +209,42 @@ int receive_command(int fd, struct command *cmd, const char *dict_name)
 /* add an entry to the dictionary */
 int dict_add(struct dictionary_item *dict, size_t dict_count, size_t dict_max_size, struct command cmd)
 {   
-    //printf("dict_max_size = %ld\n", dict_max_size);
     if (dict_count < dict_max_size){
-        affiche_dict(dict, dict_max_size);
         for (int i = 0; i <= dict_count; i++){
             if (strcmp(cmd.name, dict[i].name) == 0){
-                printf("Already in dictionary.\n");
-                return 1;
+                dict[i].value = cmd.value;
+                printf(" \n");
+                affiche_dict(dict, dict_max_size);
+                return 0;
             }
             else if (dict[i].value == 0) {
                 strcpy(dict[i].name, cmd.name);
                 dict[i].value = cmd.value;
-                printf("new : \n");
+                printf(" \n");
                 affiche_dict(dict, dict_max_size);
                 return 0;
             }
         }  
     }
     else if (dict_count == dict_max_size){
-        printf("Dictionary full.\n");
+        for (int i = 0; i <= dict_count; i++){
+            if (strcmp(cmd.name, dict[i].name) == 0){
+                dict[i].value = cmd.value;
+                printf(" \n");
+                affiche_dict(dict, dict_max_size);
+                return 0;
+            }
+        }
+        fprintf(stderr,"Dictionary full.\n");
     }
-    printf("dict_count = %ld\n", dict_count);
+
     return 1;
 }
 
 /* remove an entry from the dictionary */
 int dict_remove(struct dictionary_item *dict, size_t dict_count, struct command cmd)   
-// a revoir mouvement de tableau
 {
-    affiche_dict(dict, dict_count);
-    printf("removing...\n");
+    
     if (dict_count > 0){
         for (int i = 0; i < dict_count; i++ ){
             if (strcmp(cmd.name, dict[i].name) == 0){
@@ -258,23 +253,23 @@ int dict_remove(struct dictionary_item *dict, size_t dict_count, struct command 
                     if(dict[j].value != 0 ){
                         dict[i] = dict[j];
                         dict[j].value = 0;
-                        strcpy(dict[j].name, " ");
+                        strcpy(dict[j].name, "");
                         affiche_dict(dict, dict_count);         
                         return 0; 
                     }
                 }
                 if(i == j){
                     dict[j].value = 0;
-                        strcpy(dict[j].name, " ");
-                        affiche_dict(dict, dict_count);         
-                        return 0; 
-                }
-                printf("new : \n");
-                
+                    strcpy(dict[j].name, "");
+                    affiche_dict(dict, dict_count);         
+                    return 0; 
+                }                
             }
         }
+        printf("%s is not in dictionary.\n", cmd.name);
+        return 1;
     }
-    printf("Empty dictionary.\n");
+    fprintf(stderr,"Empty dictionary.\n");
     return 1;
 }
 
@@ -282,14 +277,14 @@ int dict_remove(struct dictionary_item *dict, size_t dict_count, struct command 
 int dict_ask(struct dictionary_item *dict, size_t dict_count, struct command *cmd)
 {
     if (dict_count > 0){
-        affiche_dict(dict, dict_count);
         for (int i = 0; i < dict_count; i++ ){
             if (strcmp(cmd->name, dict[i].name) == 0){
                 cmd->value = dict[i].value;
-                //printf("cmd->value: %f\n", cmd->value);
                 return 0; 
             }
         }
+        fprintf(stderr, "%s is not in dictionary.\n", cmd->name);
+        return 1;
     }
     return 1;
 }
@@ -297,43 +292,26 @@ int dict_ask(struct dictionary_item *dict, size_t dict_count, struct command *cm
 /* send the response of an ask request */
 int send_response(int fd, int error, double value, const char *dict_name)
 {
-    //close_pipe(fd);
+    char mess[64];
+    switch(error){
+        case 1: 
+            if (write(fd, "No value.",sizeof("No value."))<0){
+                    fprintf(stderr,"Error writing error in pipe server.\n");
+                    return 1;
+                }
+                return 0;
+        case 0:
+            sprintf(mess, "%f", value);
+            if (write(fd, mess, 16)<0){
+                fprintf(stderr,"Error writing value in pipe server.\n");
+                return 1;
+            }else {
+                
+                return 0;
+            };
+        default : return 1;
+  }
     
-   /* char *name_serv_pipe = malloc(sizeof(dict_name));
-    if (strcmp(name_serv_pipe, dict_name)!= 0){
-        sprintf(name_serv_pipe, "/tmp/dict_%s_out", dict_name);
-    }else {
-        strcpy(name_serv_pipe, dict_name);
-    }*/
-    
-    //int op = open(name_serv_pipe, O_WRONLY);printf("hello world\n");
-    if (fd < 0){
-        fprintf(stderr, "Error opening server write end of pipe %s\n", dict_name);
-        //close(op);
-        //free (name_serv_pipe);
-        return 1;
-    }
-    if (value){
-        if (write(fd, "%d", value)<0){
-            fprintf(stderr, "Error writting in pipe %s\n", dict_name);
-            close(fd);
-            //free (name_serv_pipe);
-        return 1;
-        }
-        
-    }
-    else if (error){
-        if (write(fd, "Err", sizeof ("Err")) <0){
-            fprintf(stderr, "Error writting in pipe %s\n", dict_name);
-            close(fd);
-            //free (name_serv_pipe);
-            return 1;
-        }
-    }
-    printf("Answer written.\n");
-    close (fd);
-    //free(name_serv_pipe);
-    return 0;
 }
 
 /* main function, contains the server loop */
@@ -368,7 +346,6 @@ int main(int argc, char **argv)
 
     do
     {
-        printf("here we go again\n");
         struct command cmd;
         int rc2;
 
@@ -378,51 +355,37 @@ int main(int argc, char **argv)
             rc = 1;
             goto err_pipe;
         }
-       // printf("Write in pipe client.\n");
     
         rc = receive_command(fd[0], &cmd, argv[1]);
-        printf("rc =%d.\n", rc);
+
         if (rc)
             break;
         
-        printf("ope = %d\n", cmd.op);
         switch (cmd.op)
         {
         case OP_ADD:
             rc2 =  dict_add(dict, dict_count, dict_max_size, cmd);
-            printf("rc2 add= %d\n", rc2);
-            if (rc2 == 0){
+            if (rc2 == 0 && (dict_ask(dict, dict_count, &cmd)) == 1){
                 dict_count = dict_count + 1;
             }
             break;
         case OP_REMOVE:
-            printf("herre\n");
             rc2 = dict_remove(dict, dict_count, cmd);
-            printf("rc2 rem= %d\n", rc2);
             if (rc2 == 0){
                 dict_count = dict_count - 1;
             }
             break;
         case OP_ASK:
             rc2 = dict_ask(dict, dict_count, &cmd);
-            printf("rc2 ask= %d\n", rc2);
-            char buf [BUFF_SIZE];
-            sprintf(buf, "/tmp/dict_%s_out", argv[1]);
-            
-            //errno = 0;
-            //close_pipe(fd[0]);
-            fd[1] = open(buf, O_WRONLY);printf("cmd.value: %f\n", cmd.value);
-            //printf("fd 1 : %d --> %d\n", fd[1], errno);
+            fd[1] = open_pipe(argv[1], false);
             if (fd[1] < 0)
             {
                 rc = 1;
                 goto err_pipe;
             }
-            rc = send_response(fd[1], rc2, cmd.value, argv[1]);
-            printf("rc rep = %d\n", rc);
-            rc = receive_command(fd[1], &cmd, argv[1]);
 
-            //close_pipe(fd[1]);
+            rc = send_response(fd[1], rc2, cmd.value, argv[1]);
+            close_pipe(fd[1]);
             break;
         case OP_EXIT:
             fprintf(stderr, "[INF] will quit\n");
@@ -432,7 +395,7 @@ int main(int argc, char **argv)
         if (rc)
             break;
 
-        //close_pipe(fd[0]);
+        close_pipe(fd[0]);
     } while (!done);
 
 err_pipe:
