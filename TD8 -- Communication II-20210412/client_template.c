@@ -41,60 +41,49 @@ int
 dict_add(const char *dict_name, const char *value_name, double value)
 { 
     if(sizeof(value_name) > 64){
-        printf ("Error size value_name.\n");
+        fprintf (stderr, "Error size value_name.\n");
         return 1;
     }
-
     char mess[BUFF_SIZE];
-
     sprintf(mess,"0 %s %f", value_name, value);
-    printf("Message to write : %s .\n", mess);
-
-    char *new_name = malloc(sizeof(char*));
+    char new_name [BUFF_SIZE];
     sprintf(new_name, "/tmp/dict_%s_in", dict_name);
     int op = open(new_name, O_WRONLY);
     if (op < 0){
         fprintf(stderr, "Error opening client write end of pipe %s\n", new_name);
         close(op);
-        free(new_name);
         return 1;
     }
-    printf("Opened in client correctly %s.\n", new_name);
 
-    printf("Adding...\n");
     errno = 0;
-    if (write(op, mess, BUFF_SIZE)<0){
-        printf("errno write client :%d\n", errno);
+    if (write(op, mess, BUFF_SIZE)<= 0){
+        fprintf(stderr,"Errno write client :%d\n", errno);
         close(op);
-        free(new_name);
         return 1;
-        
     }
-    printf("Message wrote by client in %s successfuly.\n", new_name);
-    close(op);
-    free(new_name);
-    return 0;
+    else {
+        close(op);
+        
+        return 0;
+    }
+    
 }
 
 /* TODO: send remove commant to the server */
 int
 dict_remove(const char *dict_name, const char *value_name)
 {
-    printf("Removing...\n");
-    char *new_name = malloc(sizeof(char*));
+    if(sizeof(value_name) > 64){
+        fprintf (stderr,"Error size value_name.\n");
+        return 1;
+    }
+
+    char new_name [BUFF_SIZE];
     sprintf(new_name, "/tmp/dict_%s_in", dict_name);
     
     int op = open(new_name, O_WRONLY); 
     if (op < 0){
         fprintf(stderr, "Error opening client write end of pipe %s\n", new_name);
-        free(new_name);
-        close(op);
-        return 1;
-    }
-
-    if(sizeof(value_name) > 64){
-        printf ("Error size value_name.\n");
-        free(new_name);
         close(op);
         return 1;
     }
@@ -102,130 +91,131 @@ dict_remove(const char *dict_name, const char *value_name)
     char * mess = malloc(264* sizeof(char));
     if (mess == NULL)  
     {
-        printf("Malloc error.\n");
+        fprintf(stderr,"Malloc error.\n");
         free(mess);
-        free(new_name);
         close(op);
         return 1;
     }
     sprintf(mess, "1 %s", value_name);
-    printf("Message to write : %s .\n", mess);
-
-    if (write(op, mess, sizeof(mess))<0){
-        //printf("errno write client :%d\n", errno);
+    if (write(op, mess, sizeof(mess))<=0){
+        fprintf(stderr, "Error writting client pipe %s\n", new_name);
         free(mess);
-        free(new_name);
         close(op);
-       return 1;
+        return 1;
     } 
-    errno = 0;
-    printf("Message wrote by client in %s successfuly.\n", new_name);
-    close(op);
-
+    else {
+        close(op);
+        free(mess);
+        return 0;
+    }
     free(mess);
-    free(new_name);
-
-    return 0;
+    
 }
 
 /* TODO: send ask command to the server */
 int
 dict_ask(const char *dict_name, const char *value_name)
 {
-    printf("Asking...\n");
-    char *new_name = malloc(sizeof(char*));
+    if(sizeof(value_name) > 64){
+        fprintf (stderr, "Error size value_name.\n");
+        return 1; 
+    }
+    char new_name [BUFF_SIZE];
     sprintf(new_name, "/tmp/dict_%s_in", dict_name);
     
     int op = open(new_name, O_WRONLY);
-    //printf("op : %d\n", op);
     if (op < 0){
         fprintf(stderr, "Error opening client write end of pipe %s\n", new_name);
         close(op);
-        free (new_name);
         return 1;
-        
-    }
-
-    if(sizeof(value_name) > 64){
-        printf ("Error size value_name.\n");
-        close(op);
-        free (new_name);
-        return 1;
-        
     }
 
     char * mess = malloc(264* sizeof(char));
     if (mess == NULL)  
     {
-        printf("Malloc error\n.");
+        fprintf(stderr,"Malloc error\n.");
         close(op);
         free(mess);
-        free (new_name);
-        return 1;
         
+        return 1;
     }
     sprintf(mess, "2 %s", value_name);
-    printf("Message to write : %s .\n", mess);
     errno = 0;
-   if (write(op, mess, sizeof(mess))<0){
-        printf("errno write client :%d\n", errno);
+   if (write(op, mess, sizeof(mess))<=0){
+        fprintf(stderr,"errno write client :%d\n", errno);
         close(op);
         free(mess);
-        free (new_name);
+        
         return 1;
     }
-    printf("Message wrote by client in %s successfuly.\n", new_name);
     close(op);
-
     free(mess);
-    free (new_name);
-    return 0;
+       
+    char read_dict [BUFF_SIZE];
+    sprintf(read_dict, "/tmp/dict_%s_out", dict_name);
+    char * lect = malloc(264* sizeof(char));
+   
+    int rd = open(read_dict, O_RDONLY);
+    if (rd < 0){
+        fprintf(stderr, "Error opening client read end of pipe %s\n", read_dict);
+        close(op);
+        return 1;
+    }
+    errno = 0;
+    if (read(rd, lect, sizeof(lect))<=0){
+        fprintf(stderr,"Errno read client :%d\n", errno);
+        close(op);
+        free(lect);
+        return 1;
+    }else {
+        if (strcmp(lect, "No value")!=0){
+            printf("The value searched is %s\n", lect);
+        }else {
+            printf("The value is not in %s", dict_name);
+        }
+        free(lect);
+        return 0;
+    }
 }
 
 /* TODO: send exit command to the server */
 int
 dict_exit(const char *dict_name)
 {
-    printf("Quitting...\n");
-
-    char *new_name = malloc(sizeof(char*));
+    char new_name [BUFF_SIZE];
     sprintf(new_name, "/tmp/dict_%s_in", dict_name);
 
     int op = open(new_name, O_WRONLY);
-
-    printf("op : %d\n", op);
     if (op < 0){
         fprintf(stderr, "Error opening client write end of pipe %s\n", new_name);
-        free(new_name);
+
         return 1;
     }
 
     char * mess = malloc(264* sizeof(char));
     if (mess == NULL)  
     {
-        printf("Malloc error.\n");
+        fprintf(stderr,"Malloc error.\n");
         close(op);
         free(mess);
-        free(new_name);
         return 1;
     }
     sprintf(mess, "3 %s", dict_name);
-    printf("Message to write : %s .\n", mess);
     errno = 0;
-    if (write(op, mess, sizeof(mess))<0){
-        printf("errno write client :%d\n", errno);
+    if (write(op, mess, sizeof(mess))<=0){
+        fprintf(stderr,"Errno write client :%d\n", errno);
         close(op);
         free(mess);
-        free(new_name);
         return 1;
         
+    } 
+    else {
+        close(op);
+        free(mess);
+        
+        return 0;
     }
-    printf("Message wrote by client in %s successfuly.\n", new_name);
-    close(op);
-
-    free(mess);
-    free(new_name);
-    return 0;
+    
 }
 
 /* client main function, literally parse the program args
